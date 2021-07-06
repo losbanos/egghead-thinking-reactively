@@ -1,5 +1,15 @@
 import {Observable, merge} from 'rxjs';
-import {distinctUntilChanged, mapTo, scan, shareReplay, startWith} from 'rxjs/operators';
+import {
+    distinctUntilChanged,
+    mapTo,
+    scan,
+    shareReplay,
+    startWith,
+    filter,
+    pairwise,
+    switchMap,
+    takeUntil
+} from 'rxjs/operators';
 
 const taskStart: Observable<any> = new Observable();
 const taskComplete: Observable<any> = new Observable();
@@ -15,6 +25,24 @@ const currentLoadCount$: Observable<number> = loadVariables.pipe(
     distinctUntilChanged(),
     shareReplay({bufferSize: 1, refCount: true})
 )
+
+const shouldHideSpinner$: Observable<number> = currentLoadCount$.pipe(
+    filter(count => count === 0)
+);
+
+const shouldShowSpinner$: Observable<Array<number>> = currentLoadCount$.pipe(
+    pairwise(),
+    filter(([prevCount, currentCount]) => prevCount === 0 && currentCount === 1)
+);
+
+shouldShowSpinner$.pipe(
+    switchMap(() => {
+        return showSpinner.pipe(
+            takeUntil(shouldHideSpinner$)
+        )
+    })
+).subscribe();
+
 export default {
 
 }
