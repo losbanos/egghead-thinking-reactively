@@ -1,4 +1,4 @@
-import {Observable, merge} from 'rxjs';
+import {Observable, merge, Subject} from 'rxjs';
 import {
     distinctUntilChanged,
     mapTo,
@@ -11,8 +11,8 @@ import {
     takeUntil
 } from 'rxjs/operators';
 
-const taskStart: Observable<any> = new Observable();
-const taskComplete: Observable<any> = new Observable();
+const taskStart: Subject<any> = new Subject();
+const taskComplete: Subject<any> = new Subject();
 const showSpinner: Observable<any> = new Observable();
 
 const loadVariables: Observable<number> = merge(taskStart.pipe(mapTo(1)), taskComplete.pipe(mapTo(-1)));
@@ -43,6 +43,12 @@ shouldShowSpinner$.pipe(
     })
 ).subscribe();
 
+export function newTaskStarted() {
+    taskStart.next();
+}
+export function existTaskCompleted() {
+    taskComplete.next();
+}
 export default {
 
 }

@@ -1,14 +1,14 @@
 import React from "react";
 import { IonContent, IonPage } from "@ionic/react";
 import DisplayCenter from "../components/presentational/DisplayCenter";
-import FastExample from "../components/FastExample";
+import FastButtons from "../components/FastButtons";
 
 const Tab2 = () => {
   return (
     <IonPage>
       <IonContent>
         <DisplayCenter>
-          <FastExample></FastExample>
+          <FastButtons></FastButtons>
         </DisplayCenter>
       </IonContent>
     </IonPage>
