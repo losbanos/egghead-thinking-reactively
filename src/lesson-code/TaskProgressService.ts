@@ -10,10 +10,10 @@ import {
     switchMap,
     takeUntil
 } from 'rxjs/operators';
+import {initLoadingSpinner} from '../services/LoadingSpinnerService';
 
 const taskStart: Subject<any> = new Subject();
 const taskComplete: Subject<any> = new Subject();
-const showSpinner: Observable<any> = new Observable();
 
 const loadVariables: Observable<number> = merge(taskStart.pipe(mapTo(1)), taskComplete.pipe(mapTo(-1)));
 const currentLoadCount$: Observable<number> = loadVariables.pipe(
@@ -34,6 +34,14 @@ const shouldShowSpinner$: Observable<Array<number>> = currentLoadCount$.pipe(
     pairwise(),
     filter(([prevCount, currentCount]) => prevCount === 0 && currentCount === 1)
 );
+const showSpinner: Observable<any> = new Observable(() => {
+    const loadingPromise: Promise<any> = initLoadingSpinner();
+    loadingPromise.then(spinner => spinner.show());
+
+    return () => {
+        loadingPromise.then(spinner => spinner.hide());
+    }
+});
 
 shouldShowSpinner$.pipe(
     switchMap(() => {
@@ -49,6 +57,7 @@ export function newTaskStarted() {
 export function existTaskCompleted() {
     taskComplete.next();
 }
+
 export default {
 
 }
