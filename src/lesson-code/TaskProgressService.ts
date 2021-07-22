@@ -1,4 +1,4 @@
-import {Observable, merge, Subject} from 'rxjs';
+import {Observable, merge, Subject, timer} from 'rxjs';
 import {
     distinctUntilChanged,
     mapTo,
@@ -26,14 +26,17 @@ const currentLoadCount$: Observable<number> = loadVariables.pipe(
     shareReplay({bufferSize: 1, refCount: true})
 )
 
-const shouldHideSpinner$: Observable<number> = currentLoadCount$.pipe(
+const spinnerDeactivated$: Observable<number> = currentLoadCount$.pipe(
     filter(count => count === 0)
 );
 
-const shouldShowSpinner$: Observable<Array<number>> = currentLoadCount$.pipe(
+const spinnerActivated$: Observable<Array<number>> = currentLoadCount$.pipe(
     pairwise(),
     filter(([prevCount, currentCount]) => prevCount === 0 && currentCount === 1)
 );
+const shouldShowSpinner$ = spinnerActivated$.pipe(
+    switchMap(() => timer(2000).pipe(takeUntil(spinnerDeactivated$)))
+)
 const showSpinner: Observable<any> = new Observable(() => {
     const loadingPromise: Promise<any> = initLoadingSpinner();
     loadingPromise.then(spinner => spinner.show());
@@ -43,10 +46,11 @@ const showSpinner: Observable<any> = new Observable(() => {
     }
 });
 
+
 shouldShowSpinner$.pipe(
     switchMap(() => {
         return showSpinner.pipe(
-            takeUntil(shouldHideSpinner$)
+            takeUntil(spinnerDeactivated$)
         )
     })
 ).subscribe();
