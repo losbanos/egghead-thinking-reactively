@@ -1,4 +1,4 @@
-import {Observable, merge, Subject, timer} from 'rxjs';
+import {Observable, merge, Subject, timer, combineLatest} from 'rxjs';
 import {
     distinctUntilChanged,
     mapTo,
@@ -30,13 +30,19 @@ const spinnerDeactivated$: Observable<number> = currentLoadCount$.pipe(
     filter(count => count === 0)
 );
 
+const flashThreshold: Observable<number> = timer(2000);
 const spinnerActivated$: Observable<Array<number>> = currentLoadCount$.pipe(
     pairwise(),
     filter(([prevCount, currentCount]) => prevCount === 0 && currentCount === 1)
 );
+const shouldHideSpinner$ = combineLatest(
+    spinnerDeactivated$,
+    flashThreshold
+);
 const shouldShowSpinner$ = spinnerActivated$.pipe(
-    switchMap(() => timer(2000).pipe(takeUntil(spinnerDeactivated$)))
+    switchMap(() => flashThreshold.pipe(takeUntil(spinnerDeactivated$)))
 )
+
 const showSpinner: Observable<any> = new Observable(() => {
     const loadingPromise: Promise<any> = initLoadingSpinner();
     loadingPromise.then(spinner => spinner.show());
@@ -50,7 +56,7 @@ const showSpinner: Observable<any> = new Observable(() => {
 shouldShowSpinner$.pipe(
     switchMap(() => {
         return showSpinner.pipe(
-            takeUntil(spinnerDeactivated$)
+            takeUntil(shouldHideSpinner$)
         )
     })
 ).subscribe();
