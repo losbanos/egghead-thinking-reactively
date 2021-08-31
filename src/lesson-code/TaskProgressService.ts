@@ -1,4 +1,4 @@
-import {Observable, merge, Subject} from 'rxjs';
+import {Observable, merge, Subject, timer, combineLatest} from 'rxjs';
 import {
     distinctUntilChanged,
     mapTo,
@@ -25,17 +25,48 @@ const currentLoadCount$: Observable<number> = loadVariables.pipe(
     distinctUntilChanged(),
     shareReplay({bufferSize: 1, refCount: true})
 )
+interface LoadStats {
+    total: number,
+    complete: number,
+    previousLoading: number
+}
+const loadStatus$: Observable<any> = currentLoadCount$.pipe(
+    scan((loadStats: LoadStats, loadingUpdate: number) => {
+        const loadWentDown: boolean = loadingUpdate < loadStats.previousLoading;
+        const currentCompleted: number = loadWentDown ? loadStats.complete + 1 : loadStats.complete;
+        return {
+            total: currentCompleted + loadingUpdate,
+            complete: currentCompleted,
+            previousLoading: loadingUpdate
+        }
+    }, {
+        total: 0, complete: 0, previousLoading: 0
+    })
+)
 
-const shouldHideSpinner$: Observable<number> = currentLoadCount$.pipe(
+const flashThreadHold: Observable<number> = timer(2000);
+
+const spinnerDeactivated$: Observable<number> = currentLoadCount$.pipe(
     filter(count => count === 0)
 );
 
-const shouldShowSpinner$: Observable<Array<number>> = currentLoadCount$.pipe(
+const spinnerActivated$: Observable<Array<number>> = currentLoadCount$.pipe(
     pairwise(),
     filter(([prevCount, currentCount]) => prevCount === 0 && currentCount === 1)
 );
-const showSpinner: Observable<any> = new Observable(() => {
-    const loadingPromise: Promise<any> = initLoadingSpinner();
+const shouldHideSpinner$ = combineLatest(
+    spinnerDeactivated$,
+    flashThreadHold
+)
+
+const shouldShowSpinner$ = spinnerActivated$.pipe(
+    switchMap(() => flashThreadHold.pipe(
+        takeUntil(spinnerDeactivated$)
+    ))
+);
+
+const showSpinner = (total: number, complete: number) => new Observable(() => {
+    const loadingPromise: Promise<any> = initLoadingSpinner(total, complete);
     loadingPromise.then(spinner => spinner.show());
 
     return () => {
@@ -43,9 +74,15 @@ const showSpinner: Observable<any> = new Observable(() => {
     }
 });
 
+const spinnerWithStats: Observable<any> = loadStatus$.pipe(
+    switchMap((stats) => {
+        return showSpinner(stats.total, stats.complete)
+    })
+)
+
 shouldShowSpinner$.pipe(
     switchMap(() => {
-        return showSpinner.pipe(
+        return spinnerWithStats.pipe(
             takeUntil(shouldHideSpinner$)
         )
     })
