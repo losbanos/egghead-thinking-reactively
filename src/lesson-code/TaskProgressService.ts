@@ -25,25 +25,25 @@ const currentLoadCount$: Observable<number> = loadVariables.pipe(
     distinctUntilChanged(),
     shareReplay({bufferSize: 1, refCount: true})
 )
+
 interface LoadStats {
+    previousLoading: number,
     total: number,
-    complete: number,
-    previousLoading: number
+    completed: number
 }
-const loadStatus$: Observable<any> = currentLoadCount$.pipe(
-    scan((loadStats: LoadStats, loadingUpdate: number) => {
-        const loadWentDown: boolean = loadingUpdate < loadStats.previousLoading;
-        const currentCompleted: number = loadWentDown ? loadStats.complete + 1 : loadStats.complete;
+const loadStats$: Observable<any> = currentLoadCount$.pipe(
+    scan((loadStats: LoadStats, loadingUpdate) => {
+        const loadsWentDown: boolean = loadStats.previousLoading > loadingUpdate;
+        const currentCompleted: number = loadsWentDown ? loadStats.completed + 1 : loadStats.completed;
         return {
             total: currentCompleted + loadingUpdate,
-            complete: currentCompleted,
+            completed: currentCompleted,
             previousLoading: loadingUpdate
         }
     }, {
-        total: 0, complete: 0, previousLoading: 0
+        total: 0, completed: 0, previousLoading: 0
     })
 )
-
 const flashThreadHold: Observable<number> = timer(2000);
 
 const spinnerDeactivated$: Observable<number> = currentLoadCount$.pipe(
@@ -74,15 +74,13 @@ const showSpinner = (total: number, complete: number) => new Observable(() => {
     }
 });
 
-const spinnerWithStats: Observable<any> = loadStatus$.pipe(
-    switchMap((stats) => {
-        return showSpinner(stats.total, stats.complete)
-    })
-)
+const spinnerWithStats$: Observable<any> = loadStats$.pipe(
+    switchMap((stats: LoadStats) => showSpinner(stats.total, stats.completed))
+);
 
 shouldShowSpinner$.pipe(
     switchMap(() => {
-        return spinnerWithStats.pipe(
+        return spinnerWithStats$.pipe(
             takeUntil(shouldHideSpinner$)
         )
     })
