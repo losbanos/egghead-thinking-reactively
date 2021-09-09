@@ -1,4 +1,4 @@
-import {Observable, merge, Subject, timer, combineLatest} from 'rxjs';
+import {Observable, merge, Subject, timer, combineLatest, fromEvent, interval} from 'rxjs';
 import {
     distinctUntilChanged,
     mapTo,
@@ -8,7 +8,8 @@ import {
     filter,
     pairwise,
     switchMap,
-    takeUntil
+    takeUntil,
+    map, takeWhile, take, tap, skip
 } from 'rxjs/operators';
 import {initLoadingSpinner} from '../services/LoadingSpinnerService';
 
@@ -92,6 +93,37 @@ export function newTaskStarted() {
 export function existTaskCompleted() {
     taskComplete.next();
 }
+
+const anyKeyPressed$: Observable<string> = fromEvent(document, 'keypress').pipe(
+    map((event: Event) => (event as KeyboardEvent).key),
+    tap(console.log)
+);
+function keyPressed(inputKey: string) {
+    return anyKeyPressed$.pipe(filter(pressedKey => pressedKey === inputKey));
+}
+
+const comboTriggered: Observable<string> = keyCombo(['a', 's', 'd', 'f']);
+function keyCombo(triggerCombo: Array<string>) {
+    const comboInitator: string = triggerCombo[0];
+    return keyPressed(comboInitator).pipe(
+        switchMap(() => {
+            return anyKeyPressed$.pipe(
+                takeUntil(timer(3000)),
+                takeWhile((keyPressed: string, index: number) => keyPressed === triggerCombo[index + 1]),
+                skip(triggerCombo.length - 2),
+                take(1)
+            )
+        })
+    )
+}
+interval(1000).pipe(
+    takeUntil(comboTriggered)
+).subscribe(
+    n => console.log('n = ', n),
+    e => console.error(e),
+    () => console.log('Combo COMPLETE')
+);
+
 
 export default {
 
