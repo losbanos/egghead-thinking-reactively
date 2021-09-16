@@ -1,4 +1,4 @@
-import {Observable, merge, Subject, timer, combineLatest, fromEvent, interval} from 'rxjs';
+import {Observable, merge, Subject, timer, combineLatest} from 'rxjs';
 import {
     distinctUntilChanged,
     mapTo,
@@ -8,10 +8,10 @@ import {
     filter,
     pairwise,
     switchMap,
-    takeUntil,
-    map, takeWhile, take, tap, skip
+    takeUntil
 } from 'rxjs/operators';
 import {initLoadingSpinner} from '../services/LoadingSpinnerService';
+import {keyCombo} from './EventCombo';
 
 const taskStart: Subject<any> = new Subject();
 const taskComplete: Subject<any> = new Subject();
@@ -78,13 +78,15 @@ const showSpinner = (total: number, complete: number) => new Observable(() => {
 const spinnerWithStats$: Observable<any> = loadStats$.pipe(
     switchMap((stats: LoadStats) => showSpinner(stats.total, stats.completed))
 );
+const hideSpinnerCombo$ = keyCombo(['q', 'w', 'e', 'r']);
 
 shouldShowSpinner$.pipe(
     switchMap(() => {
         return spinnerWithStats$.pipe(
             takeUntil(shouldHideSpinner$)
         )
-    })
+    }),
+    takeUntil(hideSpinnerCombo$)
 ).subscribe();
 
 export function newTaskStarted() {
@@ -94,35 +96,7 @@ export function existTaskCompleted() {
     taskComplete.next();
 }
 
-const anyKeyPressed$: Observable<string> = fromEvent(document, 'keypress').pipe(
-    map((event: Event) => (event as KeyboardEvent).key),
-    tap(console.log)
-);
-function keyPressed(inputKey: string) {
-    return anyKeyPressed$.pipe(filter(pressedKey => pressedKey === inputKey));
-}
 
-const comboTriggered: Observable<string> = keyCombo(['a', 's', 'd', 'f']);
-function keyCombo(triggerCombo: Array<string>) {
-    const comboInitator: string = triggerCombo[0];
-    return keyPressed(comboInitator).pipe(
-        switchMap(() => {
-            return anyKeyPressed$.pipe(
-                takeUntil(timer(3000)),
-                takeWhile((keyPressed: string, index: number) => keyPressed === triggerCombo[index + 1]),
-                skip(triggerCombo.length - 2),
-                take(1)
-            )
-        })
-    )
-}
-interval(1000).pipe(
-    takeUntil(comboTriggered)
-).subscribe(
-    n => console.log('n = ', n),
-    e => console.error(e),
-    () => console.log('Combo COMPLETE')
-);
 
 
 export default {
