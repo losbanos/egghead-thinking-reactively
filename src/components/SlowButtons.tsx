@@ -1,22 +1,22 @@
 import React from 'react';
 import {Observable, timer} from 'rxjs';
 import Button from './presentational/Button';
-import {existTaskCompleted, newTaskStarted} from '../lesson-code/TaskProgressService';
+import {showLoadingStatus} from '../lesson-code/Extensions';
 
-const slow$: Observable<number> = timer(3000);
-const verySlow$: Observable<number> = timer(6000);
+const slow$: Observable<number> = timer(3000).pipe(showLoadingStatus())
+const verySlow$: Observable<number> = timer(6000).pipe(showLoadingStatus());
 
 const doWork: () => void = () => {
-    newTaskStarted()
+    // newTaskStarted()
     slow$.subscribe(() => {
-        existTaskCompleted();
+        // existTaskCompleted();
     })
 }
 
 const doLongWork: () => void = () => {
-    newTaskStarted();
+    // newTaskStarted();
     verySlow$.subscribe(() => {
-        existTaskCompleted();
+        // existTaskCompleted();
     });
 }
 
