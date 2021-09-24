@@ -1,12 +1,11 @@
 import {newTaskStarted, existTaskCompleted} from '../lesson-code/TaskProgressService';
 import Button from './presentational/Button';
 import React from 'react';
+import {PromiseWithLoadingProgress} from '../lesson-code/Extensions';
 
 const doQuickWork = () => {
-    newTaskStarted();
-    new Promise((resolve, reject) => {
+    new PromiseWithLoadingProgress((resolve, reject) => {
         setTimeout(() => {
-            existTaskCompleted();
             resolve();
         }, 300)
     })
@@ -14,10 +13,8 @@ const doQuickWork = () => {
 
 
 const doVeryQuickWork = () => {
-    newTaskStarted();
-    new Promise((resolve, reject) => {
+    new PromiseWithLoadingProgress((resolve, reject) => {
         setTimeout(() => {
-            existTaskCompleted();
             resolve();
         }, 2200)
     })
